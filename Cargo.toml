@@ -1,0 +1,37 @@
+[workspace]
+members = [
+    "crates/dsp-core",
+    "crates/dsp-node",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+authors = ["Brashkie <dev@brashkie.dev>"]
+license = "Apache-2.0"
+repository = "https://github.com/Brashkie/kryx-dsp"
+
+[workspace.dependencies]
+# Internal
+kryx-dsp = { path = "crates/dsp-core" }
+
+# Async
+async-trait = "0.1"
+tokio = { version = "1.40", features = ["full"] }
+
+# napi
+napi = { version = "2.16", features = ["async", "napi8"] }
+napi-derive = "2.16"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
+[profile.dev]
+opt-level = 0
+debug = true

@@ -1,0 +1,25 @@
+[package]
+name = "kryx-dsp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Audio DSP processing stages for the Kryx ecosystem (@kryxjs/dsp)"
+
+[dependencies]
+# Kryx core: the Stage trait, MediaBuffer, pipeline. Points at a local checkout
+# of kryx-core (sibling of kryx-dsp). Switch to a git dependency if you prefer:
+#   kc-core = { git = "https://github.com/Brashkie/kryx-core" }
+kc-core = { path = "../../../kryx-core/crates/kc-core" }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+
+[lints.clippy]
+all = "warn"
