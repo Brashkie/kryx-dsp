@@ -23,7 +23,7 @@ tokio = { version = "1.40", features = ["full"] }
 
 # napi
 napi = { version = "2.16", features = ["async", "napi8"] }
-napi-derive = "2.16"
+napi-derive = "3.7"
 
 [profile.release]
 opt-level = 3
