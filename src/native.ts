@@ -18,6 +18,27 @@ export interface NativeBiquadCtor {
   peaking(sampleRate: number, centerHz: number, q: number, gainDb: number): NativeBiquad
   lowShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): NativeBiquad
   highShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): NativeBiquad
+  allPass(sampleRate: number, centerHz: number, q: number): NativeBiquad
+}
+
+/** A parametric equalizer instance as exposed by the native addon. */
+export interface NativeEqualizer {
+  readonly length: number
+  addLowPass(sampleRate: number, cutoffHz: number, q: number): void
+  addHighPass(sampleRate: number, cutoffHz: number, q: number): void
+  addBandPass(sampleRate: number, centerHz: number, q: number): void
+  addNotch(sampleRate: number, centerHz: number, q: number): void
+  addAllPass(sampleRate: number, centerHz: number, q: number): void
+  addPeaking(sampleRate: number, centerHz: number, q: number, gainDb: number): void
+  addLowShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): void
+  addHighShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): void
+  process(input: Float32Array): Float32Array
+  reset(): void
+}
+
+/** The `Equalizer` constructor the native addon exports. */
+export interface NativeEqualizerCtor {
+  new (): NativeEqualizer
 }
 
 /** A processing block with buffer-at-a-time state (resampler, effect). */
@@ -69,6 +90,7 @@ export interface NativeBindings {
   softClip(input: Float32Array, threshold: number): Float32Array
   coreVersion(): string
   Biquad: NativeBiquadCtor
+  Equalizer: NativeEqualizerCtor
   Resampler: NativeResamplerCtor
   SincResampler: NativeSincCtor
   DcBlocker: NativeDcBlockerCtor

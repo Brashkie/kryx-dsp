@@ -16,6 +16,7 @@ use kc_core::types::MediaType;
 
 use crate::biquad::Biquad;
 use crate::effects::{DcBlocker, Delay, Limiter};
+use crate::equalizer::Equalizer;
 use crate::resample::{LinearResampler, SincResampler};
 use crate::{bytes_to_f32, f32_to_bytes, samples};
 
@@ -109,6 +110,39 @@ impl BiquadStage {
         Self {
             filter: Mutex::new(Biquad::high_shelf(sample_rate, corner_hz, q, gain_db)),
         }
+    }
+
+    /// An all-pass biquad stage (unity magnitude, phase shift only).
+    pub fn all_pass(sample_rate: f32, center_hz: f32, q: f32) -> Self {
+        Self {
+            filter: Mutex::new(Biquad::all_pass(sample_rate, center_hz, q)),
+        }
+    }
+}
+
+/// A parametric-equalizer stage — a chain of biquad bands applied in series.
+#[derive(Debug)]
+pub struct EqualizerStage {
+    eq: Mutex<Equalizer>,
+}
+
+impl EqualizerStage {
+    /// An equalizer stage from a prebuilt [`Equalizer`].
+    pub fn new(eq: Equalizer) -> Self {
+        Self { eq: Mutex::new(eq) }
+    }
+}
+
+#[async_trait]
+impl Stage for EqualizerStage {
+    fn name(&self) -> &'static str {
+        "dsp.eq"
+    }
+
+    async fn process(&self, buf: MediaBuffer, _ctx: &StageContext) -> Result<Vec<MediaBuffer>> {
+        let mut s = bytes_to_f32(buf.data());
+        self.eq.lock().expect("eq mutex").process(&mut s);
+        Ok(vec![audio_frame_like(&buf, &s)?])
     }
 }
 
@@ -392,6 +426,16 @@ mod tests {
         let out = p.process(audio(&vec![0.9; 2_000])).await.unwrap();
         let got = bytes_to_f32(out[0].data());
         assert!((got[got.len() - 1] - 0.5).abs() < 1e-3);
+    }
+
+    #[tokio::test]
+    async fn equalizer_stage_runs_through_a_pipeline() {
+        let mut eq = crate::equalizer::Equalizer::new();
+        eq.push(crate::biquad::Biquad::peaking(48_000.0, 1_000.0, 1.0, 6.0));
+        let p = Pipeline::builder().stage(EqualizerStage::new(eq)).build().unwrap();
+        let out = p.process(audio(&vec![1.0; 64])).await.unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(bytes_to_f32(out[0].data()).len(), 64);
     }
 
     #[tokio::test]

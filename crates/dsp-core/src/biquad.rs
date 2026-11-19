@@ -114,6 +114,20 @@ impl Biquad {
         Self::normalized(b0, b1, b2, a0, a1, a2)
     }
 
+    /// An all-pass filter: passes every frequency at unity magnitude but shifts
+    /// phase around `center_hz` (useful for phase correction, reverb building
+    /// blocks, and phaser effects).
+    pub fn all_pass(sample_rate: f32, center_hz: f32, q: f32) -> Self {
+        let (cw, alpha) = Self::intermediates(sample_rate, center_hz, q);
+        let b0 = 1.0 - alpha;
+        let b1 = -2.0 * cw;
+        let b2 = 1.0 + alpha;
+        let a0 = 1.0 + alpha;
+        let a1 = -2.0 * cw;
+        let a2 = 1.0 - alpha;
+        Self::normalized(b0, b1, b2, a0, a1, a2)
+    }
+
     fn intermediates(sample_rate: f32, cutoff_hz: f32, q: f32) -> (f32, f32) {
         let w0 = 2.0 * PI * cutoff_hz / sample_rate;
         let cw = w0.cos();
@@ -247,6 +261,15 @@ mod tests {
         f.process(&mut buf);
         // DC sits well inside a low shelf → lifted by ~+6 dB (×1.995).
         assert!((buf[buf.len() - 1] - 1.995).abs() < 0.1);
+    }
+
+    #[test]
+    fn all_pass_has_unity_magnitude() {
+        let sr = 48_000.0;
+        for &hz in &[100.0f32, 1_000.0, 5_000.0] {
+            let mag = response_at(Biquad::all_pass(sr, 1_000.0, 0.707), sr, hz);
+            assert!((mag - 1.0).abs() < 0.02, "all-pass mag at {hz}Hz = {mag}");
+        }
     }
 
     #[test]

@@ -38,6 +38,7 @@ pub fn register_dsp(reg: &mut StageRegistry) {
             "peaking" => BiquadStage::peaking(sr, cutoff, q, gain_db),
             "low_shelf" => BiquadStage::low_shelf(sr, cutoff, q, gain_db),
             "high_shelf" => BiquadStage::high_shelf(sr, cutoff, q, gain_db),
+            "all_pass" => BiquadStage::all_pass(sr, cutoff, q),
             _ => BiquadStage::low_pass(sr, cutoff, q),
         };
         Ok(Arc::new(stage) as _)
@@ -121,7 +122,10 @@ mod tests {
     fn builds_each_filter_kind() {
         let mut reg = StageRegistry::new();
         register_dsp(&mut reg);
-        for kind in ["low_pass", "high_pass", "band_pass", "notch", "peaking", "low_shelf", "high_shelf"] {
+        for kind in [
+            "low_pass", "high_pass", "band_pass", "notch", "peaking", "low_shelf", "high_shelf",
+            "all_pass",
+        ] {
             let cfg = StageConfig::new().set("kind", kind).set("gain_db", 3.0);
             let stage = reg.build("dsp.filter", &cfg).unwrap();
             assert_eq!(stage.name(), "dsp.filter");

@@ -6,6 +6,7 @@ import {
   Biquad,
   DcBlocker,
   Delay,
+  Equalizer,
   Limiter,
   Resampler,
   SincResampler,
@@ -168,6 +169,31 @@ describe('@kryxjs/dsp native integration', () => {
     expect(out[0]).toBeCloseTo(0.5, 5)
     expect(out[3]).toBeCloseTo(0.5, 5)
     expect(out[6]).toBeCloseTo(0.25, 5)
+  })
+
+  it('all-pass keeps unity magnitude across frequencies', () => {
+    const sr = 48_000
+    for (const hz of [100, 1_000, 5_000]) {
+      const f = Biquad.allPass(sr, 1_000, Math.SQRT1_2)
+      const sig = new Float32Array(8_000).map((_, n) => Math.sin((2 * Math.PI * hz * n) / sr))
+      const out = f.process(sig)
+      let peakOut = 0
+      for (let i = 4_000; i < out.length; i++) peakOut = Math.max(peakOut, Math.abs(out[i]))
+      expect(peakOut).toBeCloseTo(1, 1)
+    }
+  })
+
+  it('equalizer stacks bands in series', () => {
+    const sr = 48_000
+    const eq = new Equalizer().addPeaking(sr, 1_000, 1, 6).addPeaking(sr, 1_000, 1, 6)
+    expect(eq.length).toBe(2)
+    const sig = new Float32Array(8_000).map((_, n) => Math.sin((2 * Math.PI * 1_000 * n) / sr))
+    const out = eq.process(sig)
+    let peakOut = 0
+    for (let i = 4_000; i < out.length; i++) peakOut = Math.max(peakOut, Math.abs(out[i]))
+    // +6 dB twice ≈ +12 dB (×3.98).
+    expect(peakOut).toBeGreaterThan(3.7)
+    expect(peakOut).toBeLessThan(4.3)
   })
 
   it('exposes a VERSION', () => {

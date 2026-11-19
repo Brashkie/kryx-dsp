@@ -42,9 +42,38 @@ export declare class Biquad {
   static lowShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): Biquad
   /** A high-shelf: boost or cut `gain_db` above `corner_hz`. */
   static highShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): Biquad
+  /** An all-pass filter (unity magnitude, phase shift only). */
+  static allPass(sampleRate: number, centerHz: number, q: number): Biquad
   /** Filter a buffer, advancing the filter state. Returns a new buffer. */
   process(input: Float32Array): Float32Array
   /** Clear the filter state (as if starting a fresh stream). */
+  reset(): void
+}
+/** A parametric equalizer — a chain of biquad bands applied in series. */
+export declare class Equalizer {
+  /** An empty equalizer (a pass-through until bands are added). */
+  constructor()
+  /** Number of bands. */
+  get length(): number
+  /** Append a low-pass band. */
+  addLowPass(sampleRate: number, cutoffHz: number, q: number): void
+  /** Append a high-pass band. */
+  addHighPass(sampleRate: number, cutoffHz: number, q: number): void
+  /** Append a band-pass band. */
+  addBandPass(sampleRate: number, centerHz: number, q: number): void
+  /** Append a notch band. */
+  addNotch(sampleRate: number, centerHz: number, q: number): void
+  /** Append an all-pass band. */
+  addAllPass(sampleRate: number, centerHz: number, q: number): void
+  /** Append a peaking band (`gainDb` boost/cut around `centerHz`). */
+  addPeaking(sampleRate: number, centerHz: number, q: number, gainDb: number): void
+  /** Append a low-shelf band. */
+  addLowShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): void
+  /** Append a high-shelf band. */
+  addHighShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): void
+  /** Filter a buffer through every band in series. Returns a new buffer. */
+  process(input: Float32Array): Float32Array
+  /** Clear the state of every band. */
   reset(): void
 }
 /**

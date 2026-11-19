@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0] — 2026-11-18
+
+Completes the DSP core (ROADMAP H1): all-pass filter and a parametric equalizer.
+
+### Added
+- `Biquad::all_pass` — unity-magnitude filter, phase shift only (phase
+  correction, phasers, reverb building blocks). Also as `dsp.filter` kind
+  `all_pass`.
+- `Equalizer` — an ordered chain of biquad bands applied in series. Build it
+  fluently from the filter set (`addPeaking`, `addLowShelf`, `addAllPass`, …).
+  Pipeline stage `EqualizerStage` (`dsp.eq`).
+- N-API + SDK: `Biquad.allPass` and the `Equalizer` class.
+- Tests at every layer (all-pass unity magnitude, stacked-band gain).
+
 ## [0.2.0] — 2026-10-30
 
 Higher-quality resampling, audio effects, and dB helpers (ROADMAP H1).

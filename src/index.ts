@@ -6,9 +6,10 @@
 
 export { gain, mix, clamp, peak, rms, dbToLinear, linearToDb, gainDb, softClip } from './samples.js'
 export { Biquad } from './biquad.js'
+export { Equalizer } from './equalizer.js'
 export { Resampler, SincResampler } from './resampler.js'
 export { DcBlocker, Delay, Limiter } from './effects.js'
 export { native } from './native.js'
 
 /** Version of the `@kryxjs/dsp` package. */
-export const VERSION = '0.2.0'
+export const VERSION = '0.3.0'

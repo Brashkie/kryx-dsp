@@ -13,9 +13,9 @@ need."
 - ✅ Higher-quality resampling: `SincResampler` (Kaiser-windowed-sinc, polyphase,
   anti-aliased), alongside the linear path. _(0.2.0)_
 - ✅ dB helpers, soft-clip, limiter, DC blocker, delay/echo. _(0.2.0)_
-- More filters: all-pass, and parametric EQ chains built from the biquad set.
+- ✅ All-pass filter and a parametric `Equalizer` (biquad chain). _(0.3.0)_
 - Frame-rate-agnostic stages that read the stream's sample rate from context
-  instead of fixed constructor params.
+  (needs `kc-core`'s `StageContext` to carry the sample rate — cross-repo).
 
 ## H2 — Performance
 

@@ -45,8 +45,11 @@ for (const frame of frames) {
 - `dbToLinear(db)` / `linearToDb(lin)` / `gainDb(samples, db)` — decibel helpers.
 - `softClip(samples, threshold)` — smooth saturation toward `±threshold`.
 - `Biquad` — second-order IIR filter with `.process(samples)` and `.reset()`.
-  Factories: `lowPass` / `highPass` / `bandPass` / `notch` (`sampleRate, freq, q?`)
-  and `peaking` / `lowShelf` / `highShelf` (`sampleRate, freq, q, gainDb`).
+  Factories: `lowPass` / `highPass` / `bandPass` / `notch` / `allPass`
+  (`sampleRate, freq, q?`) and `peaking` / `lowShelf` / `highShelf`
+  (`sampleRate, freq, q, gainDb`).
+- `Equalizer` — a parametric EQ: chain bands fluently
+  (`new Equalizer().addPeaking(...).addHighShelf(...)`), then `.process(samples)`.
 - `Resampler(fromHz, toHz)` — cheap streaming linear sample-rate conversion.
 - `SincResampler(fromHz, toHz, quality?)` — high-quality **anti-aliased**
   resampling (Kaiser-windowed sinc); attenuates content above the new Nyquist.
@@ -92,7 +95,7 @@ kc-core = { git = "https://github.com/Brashkie/kryx-core" }
 ## Layout
 
 ```
-crates/dsp-core   pure Rust: samples, biquad, resample, effects, stages, registry
+crates/dsp-core   pure Rust: samples, biquad, equalizer, resample, effects, stages, registry
 crates/dsp-node   N-API bindings (cdylib)
 src               TypeScript SDK
 test              vitest unit (mock) + integration (real .node)

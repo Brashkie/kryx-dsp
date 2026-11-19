@@ -1,6 +1,6 @@
 {
   "name": "@kryxjs/dsp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Audio DSP processing for the Kryx multimedia ecosystem — sample math, biquad filters, resampling, effects (ESM + CJS + TypeScript)",
   "type": "commonjs",
   "main": "./dist/index.cjs",
@@ -93,13 +93,13 @@
     }
   },
   "optionalDependencies": {
-    "@kryxjs/dsp-win32-x64-msvc": "0.2.0",
-    "@kryxjs/dsp-win32-arm64-msvc": "0.2.0",
-    "@kryxjs/dsp-darwin-x64": "0.2.0",
-    "@kryxjs/dsp-darwin-arm64": "0.2.0",
-    "@kryxjs/dsp-linux-x64-gnu": "0.2.0",
-    "@kryxjs/dsp-linux-x64-musl": "0.2.0",
-    "@kryxjs/dsp-linux-arm64-gnu": "0.2.0"
+    "@kryxjs/dsp-win32-x64-msvc": "0.3.0",
+    "@kryxjs/dsp-win32-arm64-msvc": "0.3.0",
+    "@kryxjs/dsp-darwin-x64": "0.3.0",
+    "@kryxjs/dsp-darwin-arm64": "0.3.0",
+    "@kryxjs/dsp-linux-x64-gnu": "0.3.0",
+    "@kryxjs/dsp-linux-x64-musl": "0.3.0",
+    "@kryxjs/dsp-linux-arm64-gnu": "0.3.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

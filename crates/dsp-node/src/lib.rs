@@ -12,7 +12,9 @@ use napi::bindgen_prelude::Float32Array;
 use napi_derive::napi;
 
 use kryx_dsp::effects::{self, DcBlocker as CoreDcBlocker, Delay as CoreDelay, Limiter as CoreLimiter};
-use kryx_dsp::{samples, Biquad as CoreBiquad, LinearResampler, SincResampler as CoreSinc};
+use kryx_dsp::{
+    samples, Biquad as CoreBiquad, Equalizer as CoreEq, LinearResampler, SincResampler as CoreSinc,
+};
 
 /// Scale every sample by `factor` (linear gain). Returns a new buffer.
 #[napi]
@@ -164,6 +166,14 @@ impl Biquad {
         }
     }
 
+    /// An all-pass filter (unity magnitude, phase shift only).
+    #[napi(factory)]
+    pub fn all_pass(sample_rate: f64, center_hz: f64, q: f64) -> Self {
+        Self {
+            inner: CoreBiquad::all_pass(sample_rate as f32, center_hz as f32, q as f32),
+        }
+    }
+
     /// Filter a buffer, advancing the filter state. Returns a new buffer.
     #[napi]
     pub fn process(&mut self, input: Float32Array) -> Float32Array {
@@ -173,6 +183,104 @@ impl Biquad {
     }
 
     /// Clear the filter state (as if starting a fresh stream).
+    #[napi]
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+}
+
+/// A parametric equalizer — a chain of biquad bands applied in series.
+#[napi(js_name = "Equalizer")]
+pub struct Equalizer {
+    inner: CoreEq,
+}
+
+#[napi]
+impl Equalizer {
+    /// An empty equalizer (a pass-through until bands are added).
+    #[napi(constructor)]
+    pub fn new() -> Self {
+        Self { inner: CoreEq::new() }
+    }
+
+    /// Number of bands.
+    #[napi(getter)]
+    pub fn length(&self) -> u32 {
+        self.inner.len() as u32
+    }
+
+    /// Append a low-pass band.
+    #[napi]
+    pub fn add_low_pass(&mut self, sample_rate: f64, cutoff_hz: f64, q: f64) {
+        self.inner.push(CoreBiquad::low_pass(sample_rate as f32, cutoff_hz as f32, q as f32));
+    }
+
+    /// Append a high-pass band.
+    #[napi]
+    pub fn add_high_pass(&mut self, sample_rate: f64, cutoff_hz: f64, q: f64) {
+        self.inner.push(CoreBiquad::high_pass(sample_rate as f32, cutoff_hz as f32, q as f32));
+    }
+
+    /// Append a band-pass band.
+    #[napi]
+    pub fn add_band_pass(&mut self, sample_rate: f64, center_hz: f64, q: f64) {
+        self.inner.push(CoreBiquad::band_pass(sample_rate as f32, center_hz as f32, q as f32));
+    }
+
+    /// Append a notch band.
+    #[napi]
+    pub fn add_notch(&mut self, sample_rate: f64, center_hz: f64, q: f64) {
+        self.inner.push(CoreBiquad::notch(sample_rate as f32, center_hz as f32, q as f32));
+    }
+
+    /// Append an all-pass band.
+    #[napi]
+    pub fn add_all_pass(&mut self, sample_rate: f64, center_hz: f64, q: f64) {
+        self.inner.push(CoreBiquad::all_pass(sample_rate as f32, center_hz as f32, q as f32));
+    }
+
+    /// Append a peaking band (`gainDb` boost/cut around `centerHz`).
+    #[napi]
+    pub fn add_peaking(&mut self, sample_rate: f64, center_hz: f64, q: f64, gain_db: f64) {
+        self.inner.push(CoreBiquad::peaking(
+            sample_rate as f32,
+            center_hz as f32,
+            q as f32,
+            gain_db as f32,
+        ));
+    }
+
+    /// Append a low-shelf band.
+    #[napi]
+    pub fn add_low_shelf(&mut self, sample_rate: f64, corner_hz: f64, q: f64, gain_db: f64) {
+        self.inner.push(CoreBiquad::low_shelf(
+            sample_rate as f32,
+            corner_hz as f32,
+            q as f32,
+            gain_db as f32,
+        ));
+    }
+
+    /// Append a high-shelf band.
+    #[napi]
+    pub fn add_high_shelf(&mut self, sample_rate: f64, corner_hz: f64, q: f64, gain_db: f64) {
+        self.inner.push(CoreBiquad::high_shelf(
+            sample_rate as f32,
+            corner_hz as f32,
+            q as f32,
+            gain_db as f32,
+        ));
+    }
+
+    /// Filter a buffer through every band in series. Returns a new buffer.
+    #[napi]
+    pub fn process(&mut self, input: Float32Array) -> Float32Array {
+        let mut v = input.as_ref().to_vec();
+        self.inner.process(&mut v);
+        Float32Array::new(v)
+    }
+
+    /// Clear the state of every band.
     #[napi]
     pub fn reset(&mut self) {
         self.inner.reset();

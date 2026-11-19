@@ -48,6 +48,11 @@ export class Biquad {
     return new Biquad(native.Biquad.highShelf(sampleRate, cornerHz, q, gainDb))
   }
 
+  /** An all-pass filter: unity magnitude, phase shift only. */
+  static allPass(sampleRate: number, centerHz: number, q: number = DEFAULT_Q): Biquad {
+    return new Biquad(native.Biquad.allPass(sampleRate, centerHz, q))
+  }
+
   /** Filter a buffer, advancing the filter state. Returns a new buffer. */
   process(input: Float32Array): Float32Array {
     return this.inner.process(input)

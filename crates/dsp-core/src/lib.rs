@@ -36,6 +36,7 @@
 
 pub mod biquad;
 pub mod effects;
+pub mod equalizer;
 pub mod registry;
 pub mod resample;
 pub mod samples;
@@ -43,10 +44,12 @@ pub mod stages;
 
 pub use biquad::Biquad;
 pub use effects::{DcBlocker, Delay, Limiter};
+pub use equalizer::Equalizer;
 pub use registry::register_dsp;
 pub use resample::{LinearResampler, SincResampler};
 pub use stages::{
-    BiquadStage, DcBlockerStage, DelayStage, GainStage, LimiterStage, ResampleStage, SoftClipStage,
+    BiquadStage, DcBlockerStage, DelayStage, EqualizerStage, GainStage, LimiterStage,
+    ResampleStage, SoftClipStage,
 };
 
 /// Version of this crate, mirrored from Cargo.
