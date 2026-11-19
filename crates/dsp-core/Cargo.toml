@@ -9,9 +9,10 @@ repository.workspace = true
 description = "Audio DSP processing stages for the Kryx ecosystem (@kryxjs/dsp)"
 
 [dependencies]
-# Kryx core: the Stage trait, MediaBuffer, pipeline. Points at a local checkout
-# of kryx-core (sibling of kryx-dsp). Switch to a git dependency if you prefer:
-#   kc-core = { git = "https://github.com/Brashkie/kryx-core" }
+# Kryx core: the Stage trait, MediaBuffer, pipeline. Resolved from the public
+# kryx-core repo so the package builds standalone (CI, publish) with no sibling
+# checkout. To hack on kc-core alongside dsp, add a [patch] to the root
+# Cargo.toml pointing at a local checkout (see README).
 kc-core = { git = "https://github.com/Brashkie/kryx-core" }
 async-trait = { workspace = true }
 

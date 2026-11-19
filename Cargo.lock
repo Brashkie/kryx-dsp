@@ -111,7 +111,7 @@ dependencies = [
 
 [[package]]
 name = "dsp-node"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kryx-dsp",
  "napi",
@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "kryx-dsp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "kc-core",

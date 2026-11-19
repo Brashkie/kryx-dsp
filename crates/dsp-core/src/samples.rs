@@ -45,6 +45,24 @@ pub fn rms(samples: &[f32]) -> f32 {
     (sum_sq / samples.len() as f32).sqrt()
 }
 
+/// Convert decibels to a linear amplitude factor (0 dB = 1.0, +6 dB ≈ 2.0).
+#[inline]
+pub fn db_to_linear(db: f32) -> f32 {
+    10.0_f32.powf(db / 20.0)
+}
+
+/// Convert a linear amplitude factor to decibels (1.0 = 0 dB).
+#[inline]
+pub fn linear_to_db(linear: f32) -> f32 {
+    20.0 * linear.abs().max(1.0e-12).log10()
+}
+
+/// Apply a gain expressed in decibels to every sample, in place.
+#[inline]
+pub fn gain_db(samples: &mut [f32], db: f32) {
+    gain(samples, db_to_linear(db));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,5 +97,22 @@ mod tests {
         assert!((rms(&s) - (0.5f32).sqrt()).abs() < 1e-6);
         assert_eq!(peak(&[]), 0.0);
         assert_eq!(rms(&[]), 0.0);
+    }
+
+    #[test]
+    fn db_conversions_roundtrip() {
+        assert!((db_to_linear(6.0) - 1.9953).abs() < 1e-3);
+        assert!((db_to_linear(0.0) - 1.0).abs() < 1e-6);
+        assert!((linear_to_db(0.5) + 6.0206).abs() < 1e-3);
+        // Round-trip.
+        assert!((linear_to_db(db_to_linear(-3.0)) + 3.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn gain_db_scales() {
+        let mut s = [1.0, -1.0];
+        gain_db(&mut s, 6.0);
+        assert!((s[0] - 1.9953).abs() < 1e-3);
+        assert!((s[1] + 1.9953).abs() < 1e-3);
     }
 }

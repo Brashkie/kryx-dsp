@@ -310,7 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { gain, mix, clamp, peak, rms, coreVersion, Biquad, Resampler } = nativeBinding
+const { gain, mix, clamp, peak, rms, coreVersion, dbToLinear, linearToDb, gainDb, softClip, Biquad, Resampler, SincResampler, DcBlocker, Delay, Limiter } = nativeBinding
 
 module.exports.gain = gain
 module.exports.mix = mix
@@ -318,5 +318,13 @@ module.exports.clamp = clamp
 module.exports.peak = peak
 module.exports.rms = rms
 module.exports.coreVersion = coreVersion
+module.exports.dbToLinear = dbToLinear
+module.exports.linearToDb = linearToDb
+module.exports.gainDb = gainDb
+module.exports.softClip = softClip
 module.exports.Biquad = Biquad
 module.exports.Resampler = Resampler
+module.exports.SincResampler = SincResampler
+module.exports.DcBlocker = DcBlocker
+module.exports.Delay = Delay
+module.exports.Limiter = Limiter

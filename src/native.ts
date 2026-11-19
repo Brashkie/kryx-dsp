@@ -20,15 +20,40 @@ export interface NativeBiquadCtor {
   highShelf(sampleRate: number, cornerHz: number, q: number, gainDb: number): NativeBiquad
 }
 
-/** A resampler instance as exposed by the native addon. */
-export interface NativeResampler {
+/** A processing block with buffer-at-a-time state (resampler, effect). */
+export interface NativeProcessor {
   process(input: Float32Array): Float32Array
   reset(): void
 }
 
-/** The `Resampler` constructor the native addon exports. */
+/** The `Resampler` (linear) constructor the native addon exports. */
 export interface NativeResamplerCtor {
-  new (fromHz: number, toHz: number): NativeResampler
+  new (fromHz: number, toHz: number): NativeProcessor
+}
+
+/** The `SincResampler` constructor the native addon exports. */
+export interface NativeSincCtor {
+  new (fromHz: number, toHz: number, quality?: number): NativeProcessor
+}
+
+/** The `DcBlocker` constructor. */
+export interface NativeDcBlockerCtor {
+  new (r?: number): NativeProcessor
+}
+
+/** The `Delay` constructor. */
+export interface NativeDelayCtor {
+  new (
+    maxDelaySamples: number,
+    delaySamples: number,
+    feedback: number,
+    mix: number,
+  ): NativeProcessor
+}
+
+/** The `Limiter` constructor. */
+export interface NativeLimiterCtor {
+  new (threshold: number, release: number): NativeProcessor
 }
 
 /** The full surface of the native addon. */
@@ -38,9 +63,17 @@ export interface NativeBindings {
   clamp(input: Float32Array): Float32Array
   peak(input: Float32Array): number
   rms(input: Float32Array): number
+  dbToLinear(db: number): number
+  linearToDb(linear: number): number
+  gainDb(input: Float32Array, db: number): Float32Array
+  softClip(input: Float32Array, threshold: number): Float32Array
   coreVersion(): string
   Biquad: NativeBiquadCtor
   Resampler: NativeResamplerCtor
+  SincResampler: NativeSincCtor
+  DcBlocker: NativeDcBlockerCtor
+  Delay: NativeDelayCtor
+  Limiter: NativeLimiterCtor
 }
 
 export const native = addon as unknown as NativeBindings

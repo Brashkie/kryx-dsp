@@ -27,3 +27,23 @@ export function peak(input: Float32Array): number {
 export function rms(input: Float32Array): number {
   return native.rms(input)
 }
+
+/** Convert decibels to a linear amplitude factor (0 dB = 1, +6 dB ≈ 2). */
+export function dbToLinear(db: number): number {
+  return native.dbToLinear(db)
+}
+
+/** Convert a linear amplitude factor to decibels (1 = 0 dB). */
+export function linearToDb(linear: number): number {
+  return native.linearToDb(linear)
+}
+
+/** Apply a gain in decibels to every sample. Returns a new buffer. */
+export function gainDb(input: Float32Array, db: number): Float32Array {
+  return native.gainDb(input, db)
+}
+
+/** Soft-clip (saturate) toward `±threshold`. Returns a new buffer. */
+export function softClip(input: Float32Array, threshold: number): Float32Array {
+  return native.softClip(input, threshold)
+}

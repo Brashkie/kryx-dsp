@@ -15,7 +15,8 @@ use kc_core::pipeline::{Stage, StageContext};
 use kc_core::types::MediaType;
 
 use crate::biquad::Biquad;
-use crate::resample::LinearResampler;
+use crate::effects::{DcBlocker, Delay, Limiter};
+use crate::resample::{LinearResampler, SincResampler};
 use crate::{bytes_to_f32, f32_to_bytes, samples};
 
 /// Build an audio `MediaBuffer` from samples, preserving `src`'s timestamp.
@@ -125,18 +126,43 @@ impl Stage for BiquadStage {
     }
 }
 
+/// Either resampler kind behind a single stage.
+#[derive(Debug)]
+enum AnyResampler {
+    Linear(LinearResampler),
+    Sinc(SincResampler),
+}
+
+impl AnyResampler {
+    fn process(&mut self, input: &[f32]) -> Vec<f32> {
+        match self {
+            AnyResampler::Linear(r) => r.process(input),
+            AnyResampler::Sinc(r) => r.process(input),
+        }
+    }
+}
+
 /// A stage that resamples the stream from one sample rate to another, keeping
-/// resampler state across frames so the seams stay click-free.
+/// resampler state across frames so the seams stay click-free. Choose the cheap
+/// linear path or the anti-aliased windowed-sinc path.
 #[derive(Debug)]
 pub struct ResampleStage {
-    resampler: Mutex<LinearResampler>,
+    resampler: Mutex<AnyResampler>,
 }
 
 impl ResampleStage {
-    /// A resample stage from `from_hz` to `to_hz`.
-    pub fn new(from_hz: f32, to_hz: f32) -> Self {
+    /// A linear (fast, not alias-free) resample stage from `from_hz` to `to_hz`.
+    pub fn linear(from_hz: f32, to_hz: f32) -> Self {
         Self {
-            resampler: Mutex::new(LinearResampler::new(from_hz, to_hz)),
+            resampler: Mutex::new(AnyResampler::Linear(LinearResampler::new(from_hz, to_hz))),
+        }
+    }
+
+    /// A high-quality anti-aliased windowed-sinc resample stage (`quality` =
+    /// zero-crossings per side, 16 is a good default).
+    pub fn sinc(from_hz: f32, to_hz: f32, quality: u32) -> Self {
+        Self {
+            resampler: Mutex::new(AnyResampler::Sinc(SincResampler::new(from_hz, to_hz, quality))),
         }
     }
 }
@@ -157,6 +183,116 @@ impl Stage for ResampleStage {
             return Ok(vec![]);
         }
         Ok(vec![audio_frame_like(&buf, &out)?])
+    }
+}
+
+/// A stage that removes the DC offset from the stream.
+#[derive(Debug)]
+pub struct DcBlockerStage {
+    blocker: Mutex<DcBlocker>,
+}
+
+impl DcBlockerStage {
+    /// A DC-blocker stage with pole `r` (0.995 is a good default).
+    pub fn new(r: f32) -> Self {
+        Self {
+            blocker: Mutex::new(DcBlocker::new(r)),
+        }
+    }
+}
+
+#[async_trait]
+impl Stage for DcBlockerStage {
+    fn name(&self) -> &'static str {
+        "dsp.dcblock"
+    }
+
+    async fn process(&self, buf: MediaBuffer, _ctx: &StageContext) -> Result<Vec<MediaBuffer>> {
+        let mut s = bytes_to_f32(buf.data());
+        self.blocker.lock().expect("dcblock mutex").process(&mut s);
+        Ok(vec![audio_frame_like(&buf, &s)?])
+    }
+}
+
+/// A delay / echo stage.
+#[derive(Debug)]
+pub struct DelayStage {
+    delay: Mutex<Delay>,
+}
+
+impl DelayStage {
+    /// A delay stage (see [`Delay::new`]).
+    pub fn new(max_delay_samples: usize, delay_samples: usize, feedback: f32, mix: f32) -> Self {
+        Self {
+            delay: Mutex::new(Delay::new(max_delay_samples, delay_samples, feedback, mix)),
+        }
+    }
+}
+
+#[async_trait]
+impl Stage for DelayStage {
+    fn name(&self) -> &'static str {
+        "dsp.delay"
+    }
+
+    async fn process(&self, buf: MediaBuffer, _ctx: &StageContext) -> Result<Vec<MediaBuffer>> {
+        let mut s = bytes_to_f32(buf.data());
+        self.delay.lock().expect("delay mutex").process(&mut s);
+        Ok(vec![audio_frame_like(&buf, &s)?])
+    }
+}
+
+/// A peak-limiter stage.
+#[derive(Debug)]
+pub struct LimiterStage {
+    limiter: Mutex<Limiter>,
+}
+
+impl LimiterStage {
+    /// A limiter stage with linear `threshold` and `release` (see [`Limiter::new`]).
+    pub fn new(threshold: f32, release: f32) -> Self {
+        Self {
+            limiter: Mutex::new(Limiter::new(threshold, release)),
+        }
+    }
+}
+
+#[async_trait]
+impl Stage for LimiterStage {
+    fn name(&self) -> &'static str {
+        "dsp.limiter"
+    }
+
+    async fn process(&self, buf: MediaBuffer, _ctx: &StageContext) -> Result<Vec<MediaBuffer>> {
+        let mut s = bytes_to_f32(buf.data());
+        self.limiter.lock().expect("limiter mutex").process(&mut s);
+        Ok(vec![audio_frame_like(&buf, &s)?])
+    }
+}
+
+/// A stateless soft-clip (saturation) stage.
+#[derive(Debug)]
+pub struct SoftClipStage {
+    threshold: f32,
+}
+
+impl SoftClipStage {
+    /// A soft-clip stage saturating toward `±threshold`.
+    pub fn new(threshold: f32) -> Self {
+        Self { threshold }
+    }
+}
+
+#[async_trait]
+impl Stage for SoftClipStage {
+    fn name(&self) -> &'static str {
+        "dsp.softclip"
+    }
+
+    async fn process(&self, buf: MediaBuffer, _ctx: &StageContext) -> Result<Vec<MediaBuffer>> {
+        let mut s = bytes_to_f32(buf.data());
+        crate::effects::soft_clip(&mut s, self.threshold);
+        Ok(vec![audio_frame_like(&buf, &s)?])
     }
 }
 
@@ -213,7 +349,7 @@ mod tests {
     #[tokio::test]
     async fn resample_stage_halves_a_downsampled_frame() {
         let p = Pipeline::builder()
-            .stage(ResampleStage::new(2_000.0, 1_000.0))
+            .stage(ResampleStage::linear(2_000.0, 1_000.0))
             .build()
             .unwrap();
         let out = p.process(audio(&(0..1_000).map(|n| n as f32).collect::<Vec<_>>()))
@@ -222,5 +358,51 @@ mod tests {
         assert_eq!(out.len(), 1);
         let got = bytes_to_f32(out[0].data());
         assert!((got.len() as i64 - 500).abs() < 4, "got {}", got.len());
+    }
+
+    #[tokio::test]
+    async fn sinc_resample_stage_runs() {
+        let p = Pipeline::builder()
+            .stage(ResampleStage::sinc(2_000.0, 1_000.0, 16))
+            .build()
+            .unwrap();
+        let out = p.process(audio(&vec![1.0; 2_000])).await.unwrap();
+        assert_eq!(out.len(), 1);
+        let got = bytes_to_f32(out[0].data());
+        assert!((got.len() as i64 - 1_000).abs() < 40, "got {}", got.len());
+    }
+
+    #[tokio::test]
+    async fn dcblock_stage_removes_dc() {
+        let p = Pipeline::builder()
+            .stage(DcBlockerStage::new(0.995))
+            .build()
+            .unwrap();
+        let out = p.process(audio(&vec![1.0; 4_000])).await.unwrap();
+        let got = bytes_to_f32(out[0].data());
+        assert!(got[got.len() - 1].abs() < 1e-2);
+    }
+
+    #[tokio::test]
+    async fn limiter_stage_caps_output() {
+        let p = Pipeline::builder()
+            .stage(LimiterStage::new(0.5, 0.999))
+            .build()
+            .unwrap();
+        let out = p.process(audio(&vec![0.9; 2_000])).await.unwrap();
+        let got = bytes_to_f32(out[0].data());
+        assert!((got[got.len() - 1] - 0.5).abs() < 1e-3);
+    }
+
+    #[tokio::test]
+    async fn softclip_and_delay_stages_run() {
+        let p = Pipeline::builder()
+            .stage(SoftClipStage::new(1.0))
+            .stage(DelayStage::new(16, 3, 0.5, 0.5))
+            .build()
+            .unwrap();
+        let out = p.process(audio(&vec![0.2; 32])).await.unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(bytes_to_f32(out[0].data()).len(), 32);
     }
 }

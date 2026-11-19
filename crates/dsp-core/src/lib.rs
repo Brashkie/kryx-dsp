@@ -35,15 +35,19 @@
 #![forbid(unsafe_code)]
 
 pub mod biquad;
+pub mod effects;
 pub mod registry;
 pub mod resample;
 pub mod samples;
 pub mod stages;
 
 pub use biquad::Biquad;
+pub use effects::{DcBlocker, Delay, Limiter};
 pub use registry::register_dsp;
-pub use resample::LinearResampler;
-pub use stages::{BiquadStage, GainStage, ResampleStage};
+pub use resample::{LinearResampler, SincResampler};
+pub use stages::{
+    BiquadStage, DcBlockerStage, DelayStage, GainStage, LimiterStage, ResampleStage, SoftClipStage,
+};
 
 /// Version of this crate, mirrored from Cargo.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

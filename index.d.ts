@@ -15,6 +15,14 @@ export declare function peak(input: Float32Array): number
 export declare function rms(input: Float32Array): number
 /** Version of the native `kryx-dsp` core crate. */
 export declare function coreVersion(): string
+/** Convert decibels to a linear amplitude factor. */
+export declare function dbToLinear(db: number): number
+/** Convert a linear amplitude factor to decibels. */
+export declare function linearToDb(linear: number): number
+/** Apply a gain expressed in decibels to every sample. Returns a new buffer. */
+export declare function gainDb(input: Float32Array, db: number): Float32Array
+/** Soft-clip (saturate) toward `±threshold`. Returns a new buffer. */
+export declare function softClip(input: Float32Array, threshold: number): Float32Array
 /**
  * A second-order IIR (biquad) filter with persistent state across `process`
  * calls, so a stream can be filtered buffer by buffer.
@@ -52,5 +60,47 @@ export declare class Resampler {
    */
   process(input: Float32Array): Float32Array
   /** Clear state (as if starting a fresh stream); keeps the rate ratio. */
+  reset(): void
+}
+/** A high-quality anti-aliased (windowed-sinc) streaming resampler. */
+export declare class SincResampler {
+  /**
+   * A resampler from `from_hz` to `to_hz`. `quality` = sinc zero-crossings per
+   * side (16 is a good default; higher is sharper and costlier).
+   */
+  constructor(fromHz: number, toHz: number, quality?: number | undefined | null)
+  /** Resample a buffer, returning the samples produced from this chunk. */
+  process(input: Float32Array): Float32Array
+  /** Clear state (fresh stream); keeps the rate ratio and kernel. */
+  reset(): void
+}
+/** A DC blocker — removes the 0 Hz offset, passes everything else. */
+export declare class DcBlocker {
+  /** A DC blocker with pole `r` (default 0.995). */
+  constructor(r?: number | undefined | null)
+  /** Process a buffer. Returns a new buffer. */
+  process(input: Float32Array): Float32Array
+  /** Clear state. */
+  reset(): void
+}
+/** A delay / echo with feedback and dry/wet mix. */
+export declare class Delay {
+  /**
+   * A delay of `delaySamples` (capped at `maxDelaySamples`), with `feedback`
+   * (0..1) and `mix` (0 = dry, 1 = wet).
+   */
+  constructor(maxDelaySamples: number, delaySamples: number, feedback: number, mix: number)
+  /** Process a buffer. Returns a new buffer. */
+  process(input: Float32Array): Float32Array
+  /** Clear the delay line. */
+  reset(): void
+}
+/** A peak limiter — holds output below `threshold`. */
+export declare class Limiter {
+  /** A limiter with linear `threshold` and `release` (0..1). */
+  constructor(threshold: number, release: number)
+  /** Process a buffer. Returns a new buffer. */
+  process(input: Float32Array): Float32Array
+  /** Clear state. */
   reset(): void
 }

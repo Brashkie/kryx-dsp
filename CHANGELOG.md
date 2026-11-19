@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.2.0] — 2026-10-30
+
+Higher-quality resampling, audio effects, and dB helpers (ROADMAP H1).
+
+### Added
+- `SincResampler` — streaming Kaiser-windowed-sinc resampler (polyphase table,
+  anti-aliased: attenuates content above the new Nyquist when downsampling).
+  `quality` = zero-crossings per side. The linear resampler stays as the cheap
+  option.
+- `effects`: `DcBlocker`, `Delay` (feedback + dry/wet mix), `Limiter` (peak),
+  and stateless `soft_clip`.
+- dB helpers in `samples`: `db_to_linear`, `linear_to_db`, `gain_db`.
+- Pipeline stages: `ResampleStage` gained `linear` / `sinc` constructors;
+  new `DcBlockerStage`, `DelayStage`, `LimiterStage`, `SoftClipStage`.
+- Registry: `dsp.resample` takes `kind` (linear | sinc) + `quality`; new
+  `dsp.dcblock`, `dsp.delay`, `dsp.limiter`, `dsp.softclip`.
+- N-API + SDK: `SincResampler`, `DcBlocker`, `Delay`, `Limiter` classes and
+  `dbToLinear` / `linearToDb` / `gainDb` / `softClip` functions.
+- Tests at every layer (Rust core, SDK unit mocks, SDK integration over the real
+  `.node`), including sinc anti-alias and seam continuity.
+
+### Changed
+- `ResampleStage::new` → `ResampleStage::linear` (plus `::sinc`).
+
 ## [0.1.0] — 2026-10-29
 
 First stable release of the Kryx Processing layer. Consolidates M1–M3 and makes

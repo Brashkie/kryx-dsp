@@ -10,10 +10,10 @@ need."
 
 ## H1 — Completing the DSP core
 
-- Higher-quality resampling: windowed-sinc / polyphase, alias-aware, alongside
-  the current linear path (keep linear as the cheap option).
+- ✅ Higher-quality resampling: `SincResampler` (Kaiser-windowed-sinc, polyphase,
+  anti-aliased), alongside the linear path. _(0.2.0)_
+- ✅ dB helpers, soft-clip, limiter, DC blocker, delay/echo. _(0.2.0)_
 - More filters: all-pass, and parametric EQ chains built from the biquad set.
-- Gain helpers in dB, soft-clip / limiter, DC blocker.
 - Frame-rate-agnostic stages that read the stream's sample rate from context
   instead of fixed constructor params.
 

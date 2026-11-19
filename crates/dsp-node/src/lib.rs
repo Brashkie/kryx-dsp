@@ -11,7 +11,8 @@
 use napi::bindgen_prelude::Float32Array;
 use napi_derive::napi;
 
-use kryx_dsp::{samples, Biquad as CoreBiquad, LinearResampler};
+use kryx_dsp::effects::{self, DcBlocker as CoreDcBlocker, Delay as CoreDelay, Limiter as CoreLimiter};
+use kryx_dsp::{samples, Biquad as CoreBiquad, LinearResampler, SincResampler as CoreSinc};
 
 /// Scale every sample by `factor` (linear gain). Returns a new buffer.
 #[napi]
@@ -53,6 +54,34 @@ pub fn rms(input: Float32Array) -> f64 {
 #[napi]
 pub fn core_version() -> String {
     kryx_dsp::VERSION.to_string()
+}
+
+/// Convert decibels to a linear amplitude factor.
+#[napi]
+pub fn db_to_linear(db: f64) -> f64 {
+    samples::db_to_linear(db as f32) as f64
+}
+
+/// Convert a linear amplitude factor to decibels.
+#[napi]
+pub fn linear_to_db(linear: f64) -> f64 {
+    samples::linear_to_db(linear as f32) as f64
+}
+
+/// Apply a gain expressed in decibels to every sample. Returns a new buffer.
+#[napi]
+pub fn gain_db(input: Float32Array, db: f64) -> Float32Array {
+    let mut v = input.as_ref().to_vec();
+    samples::gain_db(&mut v, db as f32);
+    Float32Array::new(v)
+}
+
+/// Soft-clip (saturate) toward `±threshold`. Returns a new buffer.
+#[napi]
+pub fn soft_clip(input: Float32Array, threshold: f64) -> Float32Array {
+    let mut v = input.as_ref().to_vec();
+    effects::soft_clip(&mut v, threshold as f32);
+    Float32Array::new(v)
 }
 
 /// A second-order IIR (biquad) filter with persistent state across `process`
@@ -175,6 +204,135 @@ impl Resampler {
     }
 
     /// Clear state (as if starting a fresh stream); keeps the rate ratio.
+    #[napi]
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+}
+
+/// A high-quality anti-aliased (windowed-sinc) streaming resampler.
+#[napi(js_name = "SincResampler")]
+pub struct SincResampler {
+    inner: CoreSinc,
+}
+
+#[napi]
+impl SincResampler {
+    /// A resampler from `from_hz` to `to_hz`. `quality` = sinc zero-crossings per
+    /// side (16 is a good default; higher is sharper and costlier).
+    #[napi(constructor)]
+    pub fn new(from_hz: f64, to_hz: f64, quality: Option<u32>) -> Self {
+        Self {
+            inner: CoreSinc::new(from_hz as f32, to_hz as f32, quality.unwrap_or(16)),
+        }
+    }
+
+    /// Resample a buffer, returning the samples produced from this chunk.
+    #[napi]
+    pub fn process(&mut self, input: Float32Array) -> Float32Array {
+        Float32Array::new(self.inner.process(input.as_ref()))
+    }
+
+    /// Clear state (fresh stream); keeps the rate ratio and kernel.
+    #[napi]
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+}
+
+/// A DC blocker — removes the 0 Hz offset, passes everything else.
+#[napi(js_name = "DcBlocker")]
+pub struct DcBlocker {
+    inner: CoreDcBlocker,
+}
+
+#[napi]
+impl DcBlocker {
+    /// A DC blocker with pole `r` (default 0.995).
+    #[napi(constructor)]
+    pub fn new(r: Option<f64>) -> Self {
+        Self {
+            inner: CoreDcBlocker::new(r.unwrap_or(0.995) as f32),
+        }
+    }
+
+    /// Process a buffer. Returns a new buffer.
+    #[napi]
+    pub fn process(&mut self, input: Float32Array) -> Float32Array {
+        let mut v = input.as_ref().to_vec();
+        self.inner.process(&mut v);
+        Float32Array::new(v)
+    }
+
+    /// Clear state.
+    #[napi]
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+}
+
+/// A delay / echo with feedback and dry/wet mix.
+#[napi(js_name = "Delay")]
+pub struct Delay {
+    inner: CoreDelay,
+}
+
+#[napi]
+impl Delay {
+    /// A delay of `delaySamples` (capped at `maxDelaySamples`), with `feedback`
+    /// (0..1) and `mix` (0 = dry, 1 = wet).
+    #[napi(constructor)]
+    pub fn new(max_delay_samples: u32, delay_samples: u32, feedback: f64, mix: f64) -> Self {
+        Self {
+            inner: CoreDelay::new(
+                max_delay_samples as usize,
+                delay_samples as usize,
+                feedback as f32,
+                mix as f32,
+            ),
+        }
+    }
+
+    /// Process a buffer. Returns a new buffer.
+    #[napi]
+    pub fn process(&mut self, input: Float32Array) -> Float32Array {
+        let mut v = input.as_ref().to_vec();
+        self.inner.process(&mut v);
+        Float32Array::new(v)
+    }
+
+    /// Clear the delay line.
+    #[napi]
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+}
+
+/// A peak limiter — holds output below `threshold`.
+#[napi(js_name = "Limiter")]
+pub struct Limiter {
+    inner: CoreLimiter,
+}
+
+#[napi]
+impl Limiter {
+    /// A limiter with linear `threshold` and `release` (0..1).
+    #[napi(constructor)]
+    pub fn new(threshold: f64, release: f64) -> Self {
+        Self {
+            inner: CoreLimiter::new(threshold as f32, release as f32),
+        }
+    }
+
+    /// Process a buffer. Returns a new buffer.
+    #[napi]
+    pub fn process(&mut self, input: Float32Array) -> Float32Array {
+        let mut v = input.as_ref().to_vec();
+        self.inner.process(&mut v);
+        Float32Array::new(v)
+    }
+
+    /// Clear state.
     #[napi]
     pub fn reset(&mut self) {
         self.inner.reset();

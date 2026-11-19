@@ -43,11 +43,16 @@ for (const frame of frames) {
 - `mix(dst, src)` — suma `src` en `dst` sobre el solapamiento.
 - `clamp(samples)` — acota cada muestra a `[-1, 1]`.
 - `peak(samples)` / `rms(samples)` — medición de nivel.
+- `dbToLinear(db)` / `linearToDb(lin)` / `gainDb(samples, db)` — helpers de decibeles.
+- `softClip(samples, threshold)` — saturación suave hacia `±threshold`.
 - `Biquad` — filtro IIR de segundo orden con `.process(samples)` y `.reset()`.
   Factorías: `lowPass` / `highPass` / `bandPass` / `notch` (`sampleRate, freq, q?`)
   y `peaking` / `lowShelf` / `highShelf` (`sampleRate, freq, q, gainDb`).
-- `Resampler(fromHz, toHz)` — conversión de sample-rate lineal en streaming con
-  `.process(samples)` y `.reset()`; sin clicks entre buffers.
+- `Resampler(fromHz, toHz)` — conversión de sample-rate lineal (barata) en streaming.
+- `SincResampler(fromHz, toHz, quality?)` — resampling de alta calidad
+  **anti-alias** (sinc con ventana Kaiser); atenúa lo que está sobre el nuevo Nyquist.
+- Efectos (con estado, `.process(samples)` / `.reset()`): `DcBlocker(r?)`,
+  `Delay(maxSamples, delaySamples, feedback?, mix?)`, `Limiter(threshold?, release?)`.
 
 Todos los buffers son `Float32Array`. Las llamadas JS↔nativo son gruesas (buffer
 entero por vez) para que el costo del cruce nunca supere el trabajo hecho.
@@ -88,7 +93,7 @@ kc-core = { git = "https://github.com/Brashkie/kryx-core" }
 ## Estructura
 
 ```
-crates/dsp-core   Rust puro: samples, biquad, resample, stages, registry
+crates/dsp-core   Rust puro: samples, biquad, resample, effects, stages, registry
 crates/dsp-node   bindings N-API (cdylib)
 src               SDK TypeScript
 test              vitest unit (mock) + integration (.node real)

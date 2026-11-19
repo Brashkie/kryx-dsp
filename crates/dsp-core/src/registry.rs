@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use kc_core::pipeline::{StageConfig, StageRegistry};
 
-use crate::stages::{BiquadStage, GainStage, ResampleStage};
+use crate::stages::{
+    BiquadStage, DcBlockerStage, DelayStage, GainStage, LimiterStage, ResampleStage, SoftClipStage,
+};
 
 /// Register every DSP stage into `reg` under its `dsp.*` name.
 ///
@@ -44,7 +46,36 @@ pub fn register_dsp(reg: &mut StageRegistry) {
     reg.register("dsp.resample", |cfg: &StageConfig| {
         let from = cfg.float("from").unwrap_or(48_000.0) as f32;
         let to = cfg.float("to").unwrap_or(48_000.0) as f32;
-        Ok(Arc::new(ResampleStage::new(from, to)) as _)
+        let quality = cfg.int("quality").unwrap_or(16).max(2) as u32;
+        let stage = match cfg.str("kind").unwrap_or("linear") {
+            "sinc" => ResampleStage::sinc(from, to, quality),
+            _ => ResampleStage::linear(from, to),
+        };
+        Ok(Arc::new(stage) as _)
+    });
+
+    reg.register("dsp.dcblock", |cfg: &StageConfig| {
+        let r = cfg.float("r").unwrap_or(0.995) as f32;
+        Ok(Arc::new(DcBlockerStage::new(r)) as _)
+    });
+
+    reg.register("dsp.delay", |cfg: &StageConfig| {
+        let max = cfg.int("max_delay").unwrap_or(48_000) as usize;
+        let delay = cfg.int("delay").unwrap_or(2_400) as usize;
+        let feedback = cfg.float("feedback").unwrap_or(0.3) as f32;
+        let mix = cfg.float("mix").unwrap_or(0.5) as f32;
+        Ok(Arc::new(DelayStage::new(max, delay, feedback, mix)) as _)
+    });
+
+    reg.register("dsp.limiter", |cfg: &StageConfig| {
+        let threshold = cfg.float("threshold").unwrap_or(0.9) as f32;
+        let release = cfg.float("release").unwrap_or(0.999) as f32;
+        Ok(Arc::new(LimiterStage::new(threshold, release)) as _)
+    });
+
+    reg.register("dsp.softclip", |cfg: &StageConfig| {
+        let threshold = cfg.float("threshold").unwrap_or(1.0) as f32;
+        Ok(Arc::new(SoftClipStage::new(threshold)) as _)
     });
 }
 
@@ -56,9 +87,34 @@ mod tests {
     fn registers_dsp_stages() {
         let mut reg = StageRegistry::new();
         register_dsp(&mut reg);
-        assert!(reg.contains("dsp.gain"));
-        assert!(reg.contains("dsp.filter"));
-        assert!(reg.contains("dsp.resample"));
+        for name in [
+            "dsp.gain",
+            "dsp.filter",
+            "dsp.resample",
+            "dsp.dcblock",
+            "dsp.delay",
+            "dsp.limiter",
+            "dsp.softclip",
+        ] {
+            assert!(reg.contains(name), "missing {name}");
+        }
+    }
+
+    #[test]
+    fn builds_sinc_resample_and_effects() {
+        let mut reg = StageRegistry::new();
+        register_dsp(&mut reg);
+        let sinc = reg
+            .build(
+                "dsp.resample",
+                &StageConfig::new().set("kind", "sinc").set("quality", 16),
+            )
+            .unwrap();
+        assert_eq!(sinc.name(), "dsp.resample");
+        assert_eq!(reg.build("dsp.dcblock", &StageConfig::new()).unwrap().name(), "dsp.dcblock");
+        assert_eq!(reg.build("dsp.delay", &StageConfig::new()).unwrap().name(), "dsp.delay");
+        assert_eq!(reg.build("dsp.limiter", &StageConfig::new()).unwrap().name(), "dsp.limiter");
+        assert_eq!(reg.build("dsp.softclip", &StageConfig::new()).unwrap().name(), "dsp.softclip");
     }
 
     #[test]
