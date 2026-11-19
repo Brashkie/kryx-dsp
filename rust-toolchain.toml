@@ -1,4 +1,8 @@
 [toolchain]
-channel = "stable"
+# Pinned to a concrete recent stable: the napi Linux docker images ship an older
+# "stable" (rustc 1.82) and `rustup update stable` fails there (cross-device
+# rename), while our deps need >= 1.88. A concrete version installs fresh (no
+# removal, no cross-device error) and satisfies every MSRV.
+channel = "1.90.0"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
