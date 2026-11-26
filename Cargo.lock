@@ -131,8 +131,8 @@ dependencies = [
 
 [[package]]
 name = "kc-core"
-version = "0.7.0"
-source = "git+https://github.com/Brashkie/kryx-core#88bec49c151a485b01d6b2e2110e3e4707b27303"
+version = "1.0.0"
+source = "git+https://github.com/Brashkie/kryx-core#e111deb32f1253c65809e4959c28fb8aeb2e6e3f"
 dependencies = [
  "anyhow",
  "arc-swap",
